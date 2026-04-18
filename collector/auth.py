@@ -1,24 +1,28 @@
 """Zitadel OIDC bearer-token validation for the Pulse collector API.
 
-Mirrors the main platform's JWT verification pattern (common/security.py) so
-Pulse reuses the same identity system. Required env:
+Mirrors the main platform's JWT verification pattern but fetches JWKS with an
+explicit Host header because Zitadel routes by Host. Required env:
 
-    OIDC_ISSUER       e.g. https://auth.opuslogic.eu  (may omit trailing slash)
-    OIDC_JWKS_URI     e.g. http://zitadel:8080/oauth/v2/keys  (container-local)
+    OIDC_ISSUER       e.g. https://auth.opuslogic.eu
+    OIDC_JWKS_URI     internal URL to Zitadel's JWKS endpoint
+                      e.g. http://opuslogic_zitadel:8080/oauth/v2/keys
+    OIDC_JWKS_HOST    Host header to use when fetching JWKS
+                      (default: the hostname from OIDC_ISSUER)
     OIDC_PROJECT_ID   Zitadel project-id / audience the tokens are minted for
-
-Pulse requires callers hold the `platform.read` scope (via viewer+ roles).
 """
 from __future__ import annotations
 
 import logging
 import os
+import time
 from typing import Optional
+from urllib.parse import urlparse
 
+import httpx
 import jwt
-from fastapi import Depends, HTTPException, Request, status
+from jwt.algorithms import RSAAlgorithm
+from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jwt import PyJWKClient
 
 log = logging.getLogger("pulse.auth")
 
@@ -32,27 +36,58 @@ ROLE_SCOPES: dict[str, set[str]] = {
 ZITADEL_ROLES_CLAIM = "urn:zitadel:iam:org:project:roles"
 REQUIRED_SCOPE = "platform.read"
 
-_jwks: PyJWKClient | None = None
 bearer_scheme = HTTPBearer(auto_error=False)
 
+_keys_cache: dict[str, object] = {"ts": 0.0, "by_kid": {}}
+_KEYS_TTL = 3600.0
 
-def _jwks_client() -> PyJWKClient:
-    global _jwks
-    if _jwks is None:
-        uri = os.environ.get("OIDC_JWKS_URI") or \
-            f"{os.environ['OIDC_ISSUER'].rstrip('/')}/oauth/v2/keys"
-        _jwks = PyJWKClient(uri, cache_keys=True, lifespan=3600)
-    return _jwks
+
+def _jwks_host() -> str:
+    explicit = os.environ.get("OIDC_JWKS_HOST")
+    if explicit:
+        return explicit
+    issuer = os.environ.get("OIDC_ISSUER", "")
+    return urlparse(issuer).netloc or "auth.opuslogic.eu"
+
+
+def _fetch_keys() -> dict[str, object]:
+    uri = os.environ["OIDC_JWKS_URI"]
+    host = _jwks_host()
+    log.info("fetching JWKS from %s (Host: %s)", uri, host)
+    r = httpx.get(uri, headers={"Host": host}, timeout=5.0)
+    r.raise_for_status()
+    by_kid: dict[str, object] = {}
+    for k in r.json().get("keys", []):
+        kid = k.get("kid")
+        if not kid:
+            continue
+        by_kid[kid] = RSAAlgorithm.from_jwk(k)
+    return by_kid
+
+
+def _key_for(kid: str):
+    now = time.time()
+    cache_by_kid: dict[str, object] = _keys_cache["by_kid"]  # type: ignore[assignment]
+    if now - float(_keys_cache["ts"]) > _KEYS_TTL or kid not in cache_by_kid:
+        cache_by_kid = _fetch_keys()
+        _keys_cache["by_kid"] = cache_by_kid
+        _keys_cache["ts"] = now
+    if kid not in cache_by_kid:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"unknown kid {kid}")
+    return cache_by_kid[kid]
 
 
 def _decode(token: str) -> dict:
     audience = os.environ["OIDC_PROJECT_ID"]
     issuer = os.environ.get("OIDC_ISSUER", "").rstrip("/")
     try:
-        key = _jwks_client().get_signing_key_from_jwt(token).key
-    except Exception as e:
-        log.warning("jwks fetch failed: %s", e)
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="token key fetch failed")
+        header = jwt.get_unverified_header(token)
+    except jwt.InvalidTokenError as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"malformed token: {e}")
+    kid = header.get("kid")
+    if not kid:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="token missing kid")
+    key = _key_for(kid)
     opts: dict = {"algorithms": ["RS256"], "audience": audience}
     if issuer:
         opts["issuer"] = issuer
@@ -81,7 +116,6 @@ def _require(claims: dict) -> None:
 async def require_user(
     creds: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
 ) -> dict:
-    """Dependency for HTTP endpoints. Returns the decoded JWT claims."""
     if creds is None or creds.scheme.lower() != "bearer":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="bearer token required")
     claims = _decode(creds.credentials)
@@ -90,12 +124,10 @@ async def require_user(
 
 
 async def verify_token_string(token: str) -> dict:
-    """For WebSocket auth — caller passes the raw token from query/cookie."""
     claims = _decode(token)
     _require(claims)
     return claims
 
 
 def auth_required() -> bool:
-    """Auth can be disabled locally via PULSE_AUTH_DISABLED=1 for dev runs."""
     return os.environ.get("PULSE_AUTH_DISABLED", "") not in ("1", "true", "yes")

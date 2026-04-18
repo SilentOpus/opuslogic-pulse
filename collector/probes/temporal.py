@@ -32,21 +32,24 @@ _KNOWN_QUEUES = tuple(
 
 async def _sdk_collect() -> list[Sample]:
     from temporalio.client import Client  # type: ignore
+    from temporalio.api.taskqueue.v1 import TaskQueue  # type: ignore
+    from temporalio.api.enums.v1 import TaskQueueType  # type: ignore
+    from temporalio.api.workflowservice.v1 import (  # type: ignore
+        DescribeTaskQueueRequest,
+        GetSystemInfoRequest,
+    )
 
     out: list[Sample] = []
     client = await Client.connect(settings.temporal_url)
     svc = client.service_client.workflow_service
 
-    info = await svc.get_system_info()
+    # Newer temporalio requires the explicit request message.
+    info = await svc.get_system_info(GetSystemInfoRequest())
     version = getattr(info, "server_version", "unknown")
     out.append(Sample("temporal", "up", 1.0, "green", labels={"version": str(version)}))
 
     for q in _KNOWN_QUEUES:
         try:
-            from temporalio.api.taskqueue.v1 import TaskQueue  # type: ignore
-            from temporalio.api.enums.v1 import TaskQueueType  # type: ignore
-            from temporalio.api.workflowservice.v1 import DescribeTaskQueueRequest  # type: ignore
-
             req = DescribeTaskQueueRequest(
                 namespace="default",
                 task_queue=TaskQueue(name=q),
