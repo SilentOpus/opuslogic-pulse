@@ -33,6 +33,7 @@ _openapi_cache: dict[str, object] = {"ts": 0.0, "routes": []}
 _OPENAPI_TTL = 300.0  # 5 min
 _SAMPLES_PER_TICK = 5
 _route_cycle: itertools.cycle | None = None
+_route_cycle_source_id: int | None = None
 
 
 async def _fetch_openapi(client: httpx.AsyncClient) -> list[str]:
@@ -68,12 +69,12 @@ async def _fetch_openapi(client: httpx.AsyncClient) -> list[str]:
 
 
 def _next_rotating(routes: list[str]) -> list[str]:
-    global _route_cycle
+    global _route_cycle, _route_cycle_source_id
     if not routes:
         return []
-    if _route_cycle is None or getattr(_route_cycle, "_source", None) != id(routes):
+    if _route_cycle is None or _route_cycle_source_id != id(routes):
         _route_cycle = itertools.cycle(routes)
-        _route_cycle._source = id(routes)  # type: ignore[attr-defined]
+        _route_cycle_source_id = id(routes)
     return [next(_route_cycle) for _ in range(min(_SAMPLES_PER_TICK, len(routes)))]
 
 
