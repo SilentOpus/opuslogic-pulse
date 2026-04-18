@@ -39,8 +39,9 @@ Each tab has a timeline scrubber for postmortems ("what went wrong when").
 
 ## Deployment
 
-Deploys alongside OpusLogic on the same VPS with its own docker-compose stack,
-reached at `pulse.opuslogic.eu` via the existing Cloudflare tunnel.
+Deploys alongside OpusLogic on the same VPS with its own docker-compose stack.
+External hostname (`pulse.opuslogic.eu`) is exposed via the platform's primary
+ingress — see `scripts/deploy.sh` and whatever the current ingress story is.
 
 ```bash
 ./scripts/deploy.sh
