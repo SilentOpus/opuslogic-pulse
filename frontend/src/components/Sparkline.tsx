@@ -29,14 +29,33 @@ export function Sparkline({ samples, width = 120, height = 32, color = '#6ba9ff'
     .join(' ')
 
   const unit = unitFor(metric)
-  const title = metric
-    ? `${metric} — min ${formatValue(min, unit)} · max ${formatValue(max, unit)} · now ${formatValue(latest, unit)} (last ${samples.length} ticks)`
-    : `min ${min.toFixed(2)} · max ${max.toFixed(2)} · now ${latest.toFixed(2)} (last ${samples.length} ticks)`
+  const minLabel = formatValue(min, unit)
+  const maxLabel = formatValue(max, unit)
+  const nowLabel = formatValue(latest, unit)
+  const title =
+    `${metric ? metric + ' — ' : ''}min ${minLabel} · max ${maxLabel} · now ${nowLabel} (last ${samples.length} ticks)`
 
   return (
-    <svg width={width} height={height} style={{ display: 'block' }}>
-      <title>{title}</title>
-      <path d={d} fill="none" stroke={color} strokeWidth="1.5" />
-    </svg>
+    <span
+      title={title}
+      style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'stretch', gap: 2 }}
+    >
+      <svg width={width} height={height} style={{ display: 'block' }}>
+        <path d={d} fill="none" stroke={color} strokeWidth="1.5" />
+      </svg>
+      <span
+        style={{
+          fontSize: 10,
+          color: 'var(--fg-dim)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          fontVariantNumeric: 'tabular-nums',
+          lineHeight: 1,
+        }}
+      >
+        <span>{minLabel}</span>
+        <span>{maxLabel}</span>
+      </span>
+    </span>
   )
 }
