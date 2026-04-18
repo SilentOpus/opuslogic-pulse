@@ -9,6 +9,7 @@ import {
   Network,
   Workflow,
   Users,
+  type LucideIcon,
 } from 'lucide-react'
 import { usePulseStream } from './api/usePulseStream'
 import { OverviewTab } from './tabs/OverviewTab'
@@ -21,7 +22,7 @@ type TabId = 'overview' | 'backend' | 'temporal' | 'postgres' | 'zitadel' | 'doc
 interface TabDef {
   id: TabId
   label: string
-  icon: React.ComponentType<{ size?: number }>
+  icon: LucideIcon
 }
 
 const TABS: TabDef[] = [
