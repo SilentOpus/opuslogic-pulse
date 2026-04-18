@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deploy OpusLogic Pulse on the VPS. Assumes the opuslogic_default Docker
+# Deploy OpusLogic Pulse on the VPS. Assumes the opuslogic-network Docker
 # network already exists (created by the main platform's compose) and that
 # pulse.opuslogic.eu DNS resolves to this host so Caddy can fetch a Let's
 # Encrypt cert on startup.
@@ -13,8 +13,8 @@ if [[ ! -f .env ]]; then
     exit 1
 fi
 
-if ! docker network inspect opuslogic_default >/dev/null 2>&1; then
-    echo "opuslogic_default network not found — start the main platform first" >&2
+if ! docker network inspect opuslogic-network >/dev/null 2>&1; then
+    echo "opuslogic-network network not found — start the main platform first" >&2
     exit 1
 fi
 
