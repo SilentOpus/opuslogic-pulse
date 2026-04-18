@@ -1,0 +1,50 @@
+:root {
+  --bg: #0b0d12;
+  --bg-panel: #111521;
+  --bg-panel-hover: #1a2030;
+  --border: #232a3d;
+  --fg: #e7ebf3;
+  --fg-dim: #8a94ad;
+  --accent: #6ba9ff;
+  --green: #3ddc84;
+  --amber: #ffb547;
+  --red: #ff5a6a;
+  --unknown: #6c7693;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  margin: 0; padding: 0; height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+button:hover { background: var(--bg-panel-hover); }
+
+.dot {
+  display: inline-block;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+.dot.green   { background: var(--green); }
+.dot.amber   { background: var(--amber); }
+.dot.red     { background: var(--red);    animation: pulse 1.2s ease-in-out infinite; }
+.dot.unknown { background: var(--unknown); }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}

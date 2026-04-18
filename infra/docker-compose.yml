@@ -1,0 +1,44 @@
+services:
+  collector:
+    build: ../collector
+    container_name: pulse_collector
+    restart: unless-stopped
+    environment:
+      PULSE_DB_PATH: /data/pulse.duckdb
+      PULSE_POLL_INTERVAL: "10"
+      PULSE_RETENTION_DAYS: "90"
+      PULSE_BACKEND_URL: ${PULSE_BACKEND_URL:-https://backend:7443}
+      PULSE_ZITADEL_URL: ${PULSE_ZITADEL_URL:-http://zitadel:8080}
+      PULSE_TEMPORAL_URL: ${PULSE_TEMPORAL_URL:-temporal-server:7233}
+      PULSE_POSTGRES_DSN: ${PULSE_POSTGRES_DSN}
+      PULSE_PROC_PATH: /host/proc
+      PULSE_SYS_PATH: /host/sys
+    volumes:
+      - pulse_data:/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+    networks:
+      - opuslogic_default
+    ports:
+      - "127.0.0.1:7500:7500"
+
+  frontend:
+    build: ../frontend
+    container_name: pulse_frontend
+    restart: unless-stopped
+    depends_on:
+      - collector
+    volumes:
+      - ./htpasswd:/etc/nginx/htpasswd:ro
+    networks:
+      - opuslogic_default
+    ports:
+      - "127.0.0.1:7600:80"
+
+volumes:
+  pulse_data:
+
+networks:
+  opuslogic_default:
+    external: true
