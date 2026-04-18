@@ -24,7 +24,8 @@ log = logging.getLogger("pulse.probes.temporal")
 _KNOWN_QUEUES = tuple(
     q.strip()
     for q in os.getenv(
-        "PULSE_TEMPORAL_QUEUES", "default-tq,activity-default-tq,credential-manager-tq"
+        "PULSE_TEMPORAL_QUEUES",
+        "default,agent_task_queue,activity-zone-default,default-activity,workflow-orchestration",
     ).split(",")
     if q.strip()
 )

@@ -32,10 +32,14 @@ export function OverviewTab({ stream, pickedTs }: { stream: Streamed; pickedTs: 
   )
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 16 }}>
       {services.map((svc) => {
         const samples = byService.get(svc) ?? []
         const status = worstStatus(samples.map((s) => s.status))
+        const shown = samples
+          .slice()
+          .sort((a, b) => a.metric.localeCompare(b.metric))
+          .slice(0, 6)
         return (
           <div
             key={svc}
@@ -44,51 +48,75 @@ export function OverviewTab({ stream, pickedTs }: { stream: Streamed; pickedTs: 
               border: '1px solid var(--border)',
               borderRadius: 10,
               padding: 16,
+              minWidth: 0,
+              overflow: 'hidden',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12, gap: 8, minWidth: 0 }}>
               <StatusDot status={status} />
               <h3 style={{ margin: 0, fontSize: 16, textTransform: 'capitalize' }}>{svc}</h3>
-              <span style={{ marginLeft: 'auto', color: 'var(--fg-dim)', fontSize: 12 }}>
+              <span style={{ marginLeft: 'auto', color: 'var(--fg-dim)', fontSize: 12, whiteSpace: 'nowrap' }}>
                 {samples.length} metric{samples.length !== 1 ? 's' : ''}
               </span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {samples
-                .slice()
-                .sort((a, b) => a.metric.localeCompare(b.metric))
-                .slice(0, 6)
-                .map((s) => {
-                  const k = keyOf(s)
-                  const hist = stream.history.get(k) ?? []
-                  return (
-                    <div
-                      key={k}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {shown.map((s) => {
+                const k = keyOf(s)
+                const hist = stream.history.get(k) ?? []
+                const labelText = Object.entries(s.labels)
+                  .filter(([k]) => !['code', 'path'].includes(k))
+                  .map(([k, v]) => `${k}=${v}`)
+                  .join(' ')
+                return (
+                  <div
+                    key={k}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(0, 1fr) 80px 64px',
+                      alignItems: 'center',
+                      gap: 10,
+                      minWidth: 0,
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {s.metric}
+                      </div>
+                      {labelText && (
+                        <div
+                          title={labelText}
+                          style={{
+                            fontSize: 11,
+                            color: 'var(--fg-dim)',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {labelText}
+                        </div>
+                      )}
+                    </div>
+                    <Sparkline samples={hist} width={80} />
+                    <span
                       style={{
-                        display: 'grid',
-                        gridTemplateColumns: '1fr auto auto',
-                        alignItems: 'center',
-                        gap: 12,
+                        fontVariantNumeric: 'tabular-nums',
+                        textAlign: 'right',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
                       }}
                     >
-                      <span style={{ color: 'var(--fg-dim)', fontSize: 13 }}>
-                        {s.metric}
-                        {Object.keys(s.labels).length > 0 && (
-                          <span style={{ fontSize: 11, marginLeft: 6 }}>
-                            {Object.entries(s.labels)
-                              .filter(([k]) => !['code', 'path'].includes(k))
-                              .map(([k, v]) => `${k}=${v}`)
-                              .join(' ')}
-                          </span>
-                        )}
-                      </span>
-                      <Sparkline samples={hist} />
-                      <span style={{ fontVariantNumeric: 'tabular-nums', minWidth: 56, textAlign: 'right' }}>
-                        {s.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                  )
-                })}
+                      {s.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                )
+              })}
+              {samples.length > shown.length && (
+                <div style={{ color: 'var(--fg-dim)', fontSize: 11, textAlign: 'right' }}>
+                  +{samples.length - shown.length} more
+                </div>
+              )}
             </div>
           </div>
         )

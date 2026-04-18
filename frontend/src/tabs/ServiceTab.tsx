@@ -41,7 +41,14 @@ export function ServiceTab({ service, stream, pickedTs, groupBy = 'metric' }: Pr
         overflow: 'hidden',
       }}
     >
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+        <colgroup>
+          <col style={{ width: 56 }} />
+          <col style={{ width: 160 }} />
+          <col />
+          <col style={{ width: 140 }} />
+          <col style={{ width: 100 }} />
+        </colgroup>
         <thead>
           <tr style={{ textAlign: 'left', color: 'var(--fg-dim)', fontSize: 12 }}>
             <th style={{ padding: '10px 16px' }}>Status</th>
@@ -55,14 +62,35 @@ export function ServiceTab({ service, stream, pickedTs, groupBy = 'metric' }: Pr
           {rows.map((s) => {
             const k = keyOf(s)
             const hist = stream.history.get(k) ?? []
+            const labels = Object.entries(s.labels).map(([k, v]) => `${k}=${v}`).join(' ') || '—'
             return (
               <tr key={k} style={{ borderTop: '1px solid var(--border)' }}>
                 <td style={{ padding: '10px 16px' }}>
                   <StatusDot status={s.status} />
                 </td>
-                <td style={{ padding: '10px 16px' }}>{s.metric}</td>
-                <td style={{ padding: '10px 16px', color: 'var(--fg-dim)', fontSize: 12 }}>
-                  {Object.entries(s.labels).map(([k, v]) => `${k}=${v}`).join(' ') || '—'}
+                <td
+                  style={{
+                    padding: '10px 16px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                  title={s.metric}
+                >
+                  {s.metric}
+                </td>
+                <td
+                  style={{
+                    padding: '10px 16px',
+                    color: 'var(--fg-dim)',
+                    fontSize: 12,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                  title={labels}
+                >
+                  {labels}
                 </td>
                 <td style={{ padding: '10px 16px' }}>
                   <Sparkline samples={hist} />
