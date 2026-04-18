@@ -11,3 +11,4 @@ build/
 .DS_Store
 *.log
 infra/htpasswd
+.claude-flow/
