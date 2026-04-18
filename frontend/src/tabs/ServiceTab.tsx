@@ -5,6 +5,7 @@ import type { Sample } from '@/api/types'
 import type { Streamed } from '@/api/usePulseStream'
 import { keyOf } from '@/api/usePulseStream'
 import { viewAt } from '@/api/atMoment'
+import { formatValue, unitFor } from '@/api/units'
 
 interface Props {
   service: string
@@ -93,7 +94,7 @@ export function ServiceTab({ service, stream, pickedTs, groupBy = 'metric' }: Pr
                   {labels}
                 </td>
                 <td style={{ padding: '10px 16px' }}>
-                  <Sparkline samples={hist} />
+                  <Sparkline samples={hist} metric={s.metric} />
                 </td>
                 <td
                   style={{
@@ -101,8 +102,9 @@ export function ServiceTab({ service, stream, pickedTs, groupBy = 'metric' }: Pr
                     textAlign: 'right',
                     fontVariantNumeric: 'tabular-nums',
                   }}
+                  title={`${s.metric}: ${formatValue(s.value, unitFor(s.metric))}`}
                 >
-                  {s.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                  {formatValue(s.value, unitFor(s.metric))}
                 </td>
               </tr>
             )

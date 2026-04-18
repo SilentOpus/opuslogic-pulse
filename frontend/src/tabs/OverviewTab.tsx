@@ -5,6 +5,7 @@ import type { Sample, Status } from '@/api/types'
 import type { Streamed } from '@/api/usePulseStream'
 import { keyOf } from '@/api/usePulseStream'
 import { viewAt } from '@/api/atMoment'
+import { formatValue, unitFor } from '@/api/units'
 
 const SERVICE_ORDER = ['host', 'backend', 'temporal', 'postgres', 'zitadel', 'docker', 'agents']
 
@@ -97,8 +98,9 @@ export function OverviewTab({ stream, pickedTs }: { stream: Streamed; pickedTs: 
                         </div>
                       )}
                     </div>
-                    <Sparkline samples={hist} width={80} />
+                    <Sparkline samples={hist} width={80} metric={s.metric} />
                     <span
+                      title={`${s.metric}: ${formatValue(s.value, unitFor(s.metric))}`}
                       style={{
                         fontVariantNumeric: 'tabular-nums',
                         textAlign: 'right',
@@ -107,7 +109,7 @@ export function OverviewTab({ stream, pickedTs }: { stream: Streamed; pickedTs: 
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      {s.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      {formatValue(s.value, unitFor(s.metric))}
                     </span>
                   </div>
                 )
