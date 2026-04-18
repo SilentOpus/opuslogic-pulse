@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Activity,
   Boxes,
   Cpu,
   Database,
   KeyRound,
+  LogOut,
   Network,
   Workflow,
   Users,
@@ -13,6 +14,7 @@ import { usePulseStream } from './api/usePulseStream'
 import { OverviewTab } from './tabs/OverviewTab'
 import { ServiceTab } from './tabs/ServiceTab'
 import { TimelineScrubber } from './components/TimelineScrubber'
+import { getUsername, logout } from './auth/oidc'
 
 type TabId = 'overview' | 'backend' | 'temporal' | 'postgres' | 'zitadel' | 'docker' | 'agents' | 'host'
 
@@ -36,7 +38,10 @@ const TABS: TabDef[] = [
 export function App() {
   const [active, setActive] = useState<TabId>('overview')
   const [pickedTs, setPickedTs] = useState<string | null>(null)
+  const [username, setUsername] = useState('')
   const stream = usePulseStream()
+
+  useEffect(() => { void getUsername().then(setUsername) }, [])
 
   const scrubberService = active === 'overview' ? null : active
 
@@ -91,6 +96,18 @@ export function App() {
           {stream.lastTick && (
             <div style={{ marginTop: 4 }}>last tick {new Date(stream.lastTick).toLocaleTimeString()}</div>
           )}
+          <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {username || '—'}
+            </span>
+            <button
+              onClick={() => void logout()}
+              title="Sign out"
+              style={{ padding: '3px 6px', border: '1px solid var(--border)' }}
+            >
+              <LogOut size={12} />
+            </button>
+          </div>
         </div>
       </aside>
 

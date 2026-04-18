@@ -39,13 +39,25 @@ Each tab has a timeline scrubber for postmortems ("what went wrong when").
 
 ## Deployment
 
-Deploys alongside OpusLogic on the same VPS with its own docker-compose stack.
-External hostname (`pulse.opuslogic.eu`) is exposed via the platform's primary
-ingress — see `scripts/deploy.sh` and whatever the current ingress story is.
+Runs alongside OpusLogic on the same VPS with its own docker-compose stack.
+Caddy terminates TLS with a Let's Encrypt cert for `pulse.opuslogic.eu`.
+Authentication goes through the platform's Zitadel (OIDC / PKCE) — the same
+users that can sign into OpusLogic can sign into Pulse, with roles mapped to
+Pulse scopes (see `collector/auth.py`).
 
 ```bash
+# 1. Register the Pulse app in Zitadel (one-time)
+ZITADEL_URL=https://auth.opuslogic.eu \
+ZITADEL_PAT=<personal-access-token> \
+    ./scripts/setup-zitadel-pulse.sh
+
+# 2. Fill in .env with the values the script prints, then:
 ./scripts/deploy.sh
 ```
+
+DNS: `pulse.opuslogic.eu` (A) must point to the VPS. AAAA records are optional
+but only keep them if the VPS actually listens on IPv6 for port 80 (Let's
+Encrypt will try both and fail if AAAA resolves to an unreachable host).
 
 ## Status
 

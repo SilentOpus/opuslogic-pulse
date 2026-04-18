@@ -13,6 +13,9 @@ services:
       PULSE_POSTGRES_DSN: ${PULSE_POSTGRES_DSN}
       PULSE_PROC_PATH: /host/proc
       PULSE_SYS_PATH: /host/sys
+      OIDC_ISSUER: ${OIDC_ISSUER}
+      OIDC_JWKS_URI: ${OIDC_JWKS_URI}
+      OIDC_PROJECT_ID: ${OIDC_PROJECT_ID}
     volumes:
       - pulse_data:/data
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -20,24 +23,42 @@ services:
       - /sys:/host/sys:ro
     networks:
       - opuslogic_default
-    ports:
-      - "127.0.0.1:7500:7500"
 
   frontend:
-    build: ../frontend
+    build:
+      context: ../frontend
+      args:
+        VITE_OIDC_AUTHORITY: ${VITE_OIDC_AUTHORITY}
+        VITE_OIDC_CLIENT_ID: ${VITE_OIDC_CLIENT_ID}
     container_name: pulse_frontend
     restart: unless-stopped
     depends_on:
       - collector
-    volumes:
-      - ./htpasswd:/etc/nginx/htpasswd:ro
     networks:
       - opuslogic_default
+
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: pulse_caddy
+    restart: unless-stopped
+    depends_on:
+      - frontend
+    environment:
+      LE_EMAIL: ${LE_EMAIL:-ali@opuslogic.eu}
     ports:
-      - "127.0.0.1:7600:80"
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - opuslogic_default
 
 volumes:
   pulse_data:
+  caddy_data:
+  caddy_config:
 
 networks:
   opuslogic_default:

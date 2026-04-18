@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Sample, SamplesMessage } from './types'
+import { getAccessToken } from '@/auth/oidc'
 
 // Keyed by `${service}|${metric}|${labels-json}` so each distinct timeseries is
 // kept separately. Overview uses latest value; per-service tabs scan this map.
@@ -28,14 +29,16 @@ export function usePulseStream(): Streamed {
     let reconnectTimer: number | null = null
     let cancelled = false
 
-    const connect = () => {
+    const connect = async () => {
       const proto = location.protocol === 'https:' ? 'wss' : 'ws'
-      ws = new WebSocket(`${proto}://${location.host}/api/stream`)
+      const token = await getAccessToken()
+      const qs = token ? `?token=${encodeURIComponent(token)}` : ''
+      ws = new WebSocket(`${proto}://${location.host}/api/stream${qs}`)
 
       ws.onopen = () => setConnected(true)
       ws.onclose = () => {
         setConnected(false)
-        if (!cancelled) reconnectTimer = window.setTimeout(connect, 2000)
+        if (!cancelled) reconnectTimer = window.setTimeout(() => { void connect() }, 2000)
       }
       ws.onmessage = (ev) => {
         try {
@@ -60,7 +63,7 @@ export function usePulseStream(): Streamed {
       force((n) => n + 1)
     }
 
-    connect()
+    void connect()
 
     return () => {
       cancelled = true

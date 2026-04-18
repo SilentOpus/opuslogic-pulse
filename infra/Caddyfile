@@ -1,0 +1,34 @@
+# Caddy — public TLS edge for OpusLogic Pulse.
+#
+# Auto-provisions Let's Encrypt certs for pulse.opuslogic.eu on startup
+# (ACME HTTP-01 on port 80). No third-party CDN.
+
+{
+    email {$LE_EMAIL:ali@opuslogic.eu}
+    # Default CA is Let's Encrypt production.
+}
+
+# www -> apex
+www.pulse.opuslogic.eu {
+    redir https://pulse.opuslogic.eu{uri} permanent
+}
+
+pulse.opuslogic.eu {
+    encode gzip zstd
+
+    # Reasonable security headers for a dashboard that embeds nothing external.
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options    "nosniff"
+        X-Frame-Options           "DENY"
+        Referrer-Policy           "strict-origin-when-cross-origin"
+        -Server
+    }
+
+    # Everything goes through the internal frontend container (static SPA + /api reverse proxy).
+    reverse_proxy frontend:80 {
+        header_up Host {host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
