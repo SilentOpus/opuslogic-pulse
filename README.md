@@ -40,8 +40,10 @@ Each tab has a timeline scrubber for postmortems ("what went wrong when").
 ## Deployment
 
 Runs alongside OpusLogic on the same VPS with its own docker-compose stack.
-Caddy terminates TLS with a Let's Encrypt cert for `pulse.opuslogic.eu`.
-Authentication goes through the platform's Zitadel (OIDC / PKCE) — the same
+Public ingress goes through the platform's **existing** Caddy (at
+`/opt/opuslogic/Caddyfile`) — add a `pulse.opuslogic.eu` vhost there that
+reverse-proxies to `pulse_frontend:80` on the shared `opuslogic-network`.
+Authentication goes through the platform's Zitadel (OIDC / PKCE), so the same
 users that can sign into OpusLogic can sign into Pulse, with roles mapped to
 Pulse scopes (see `collector/auth.py`).
 

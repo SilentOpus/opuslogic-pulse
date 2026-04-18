@@ -1,3 +1,8 @@
+# Pulse stack — collector + frontend only.
+#
+# TLS + public ingress is handled by the platform's existing Caddy (running in
+# the main automation-platform compose), which reverse-proxies pulse.opuslogic.eu
+# to our frontend container. We join the same network so Caddy can reach us.
 services:
   collector:
     build: ../collector
@@ -7,9 +12,9 @@ services:
       PULSE_DB_PATH: /data/pulse.duckdb
       PULSE_POLL_INTERVAL: "10"
       PULSE_RETENTION_DAYS: "90"
-      PULSE_BACKEND_URL: ${PULSE_BACKEND_URL:-https://backend:7443}
-      PULSE_ZITADEL_URL: ${PULSE_ZITADEL_URL:-http://zitadel:8080}
-      PULSE_TEMPORAL_URL: ${PULSE_TEMPORAL_URL:-temporal-server:7233}
+      PULSE_BACKEND_URL: ${PULSE_BACKEND_URL:-https://opuslogic_backend:443}
+      PULSE_ZITADEL_URL: ${PULSE_ZITADEL_URL:-http://opuslogic_zitadel:8080}
+      PULSE_TEMPORAL_URL: ${PULSE_TEMPORAL_URL:-opuslogic_temporal_server:7233}
       PULSE_POSTGRES_DSN: ${PULSE_POSTGRES_DSN}
       PULSE_PROC_PATH: /host/proc
       PULSE_SYS_PATH: /host/sys
@@ -22,7 +27,7 @@ services:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
     networks:
-      - opuslogic_default
+      - opuslogic-network
 
   frontend:
     build:
@@ -35,31 +40,11 @@ services:
     depends_on:
       - collector
     networks:
-      - opuslogic_default
-
-  caddy:
-    image: caddy:2.8-alpine
-    container_name: pulse_caddy
-    restart: unless-stopped
-    depends_on:
-      - frontend
-    environment:
-      LE_EMAIL: ${LE_EMAIL:-ali@opuslogic.eu}
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    networks:
-      - opuslogic_default
+      - opuslogic-network
 
 volumes:
   pulse_data:
-  caddy_data:
-  caddy_config:
 
 networks:
-  opuslogic_default:
+  opuslogic-network:
     external: true
