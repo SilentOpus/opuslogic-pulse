@@ -33,7 +33,19 @@ export async function ensureAuthenticated(): Promise<User> {
 }
 
 export async function getAccessToken(): Promise<string | null> {
-  const u = await userManager.getUser()
+  let u = await userManager.getUser()
+  if (!u || u.expired) {
+    // Token gone or expired (e.g. tab woke after long sleep). Try silent renew
+    // first; if Zitadel won't issue without user interaction, redirect to login.
+    try {
+      u = await userManager.signinSilent()
+    } catch {
+      const path = window.location.pathname + window.location.search
+      if (path !== '/') sessionStorage.setItem('pulse_return_path', path)
+      await userManager.signinRedirect()
+      return null
+    }
+  }
   return u?.access_token ?? null
 }
 
