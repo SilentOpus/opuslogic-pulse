@@ -18,12 +18,19 @@ async def collect() -> list[Sample]:
             async with conn.cursor() as cur:
                 await cur.execute(
                     "SELECT "
-                    " count(*) FILTER (WHERE last_heartbeat_at > now() - interval '2 minutes'),"
-                    " count(*) FILTER (WHERE last_heartbeat_at <= now() - interval '2 minutes'),"
+                    " count(*) FILTER (WHERE agent_last_seen_at > now() - interval '2 minutes'),"
+                    " count(*) FILTER ("
+                    "   WHERE agent_last_seen_at <= now() - interval '2 minutes'"
+                    "     AND agent_status = 'active'"
+                    " ),"
+                    " count(*) FILTER (WHERE agent_status = 'active'),"
                     " count(*) "
                     "FROM agents"
                 )
-                healthy, stale, total = await cur.fetchone()
+                healthy, stale, active_total, total = await cur.fetchone()
+                # "green" overall if every active agent checked in recently
+                up_status = "green" if stale == 0 else ("amber" if stale < active_total else "red")
+                out.append(Sample("agents", "up", 1.0 if stale == 0 else 0.0, up_status))
                 out.append(Sample("agents", "healthy", float(healthy), "green"))
                 out.append(
                     Sample(
@@ -33,6 +40,7 @@ async def collect() -> list[Sample]:
                         "red" if stale > 0 else "green",
                     )
                 )
+                out.append(Sample("agents", "active", float(active_total)))
                 out.append(Sample("agents", "total", float(total)))
     except Exception as e:
         out.append(Sample("agents", "up", 0.0, "red", message=str(e)[:200]))

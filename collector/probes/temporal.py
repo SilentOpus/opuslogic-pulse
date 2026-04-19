@@ -50,35 +50,51 @@ async def _sdk_collect() -> list[Sample]:
     out.append(Sample("temporal", "up", 1.0, "green", labels={"version": str(version)}))
 
     for q in _KNOWN_QUEUES:
-        try:
-            req = DescribeTaskQueueRequest(
-                namespace="default",
-                task_queue=TaskQueue(name=q),
-                task_queue_type=TaskQueueType.TASK_QUEUE_TYPE_WORKFLOW,
-            )
-            resp: Any = await svc.describe_task_queue(req)
-            pollers = len(resp.pollers) if hasattr(resp, "pollers") else 0
-            status = "green" if pollers > 0 else "red"
-            out.append(
-                Sample(
-                    "temporal",
-                    "workers_reachable",
-                    float(pollers),
-                    status,
-                    labels={"queue": q},
+        # Activity-only queues won't show pollers under TASK_QUEUE_TYPE_WORKFLOW
+        # and vice-versa. Infer the type from the queue name; query both if
+        # ambiguous so we don't falsely show red.
+        name_lc = q.lower()
+        if "activity" in name_lc:
+            types = [("activity", TaskQueueType.TASK_QUEUE_TYPE_ACTIVITY)]
+        elif "workflow" in name_lc or "orchestration" in name_lc:
+            types = [("workflow", TaskQueueType.TASK_QUEUE_TYPE_WORKFLOW)]
+        else:
+            types = [
+                ("workflow", TaskQueueType.TASK_QUEUE_TYPE_WORKFLOW),
+                ("activity", TaskQueueType.TASK_QUEUE_TYPE_ACTIVITY),
+            ]
+
+        best_pollers = 0
+        best_type = types[0][0]
+        errs: list[str] = []
+        for type_label, tq_type in types:
+            try:
+                req = DescribeTaskQueueRequest(
+                    namespace="default",
+                    task_queue=TaskQueue(name=q),
+                    task_queue_type=tq_type,
                 )
+                resp: Any = await svc.describe_task_queue(req)
+                pollers = len(resp.pollers) if hasattr(resp, "pollers") else 0
+                if pollers > best_pollers:
+                    best_pollers = pollers
+                    best_type = type_label
+            except Exception as e:
+                errs.append(str(e)[:100])
+
+        status = "green" if best_pollers > 0 else "red"
+        labels = {"queue": q, "type": best_type}
+        msg = "; ".join(errs) if (best_pollers == 0 and errs) else ""
+        out.append(
+            Sample(
+                "temporal",
+                "workers_reachable",
+                float(best_pollers),
+                status,
+                labels=labels,
+                message=msg,
             )
-        except Exception as e:
-            out.append(
-                Sample(
-                    "temporal",
-                    "workers_reachable",
-                    0.0,
-                    "red",
-                    labels={"queue": q},
-                    message=str(e)[:200],
-                )
-            )
+        )
     return out
 
 
