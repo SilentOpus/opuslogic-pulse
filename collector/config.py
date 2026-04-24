@@ -49,7 +49,7 @@ class Settings:
         p.strip()
         for p in os.getenv(
             "PULSE_ENABLED_PROBES",
-            "host,backend,temporal,postgres,zitadel,docker,agents",
+            "host,backend,temporal,postgres,zitadel,docker,agents,security",
         ).split(",")
         if p.strip()
     )

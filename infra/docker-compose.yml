@@ -18,6 +18,10 @@ services:
       PULSE_POSTGRES_DSN: ${PULSE_POSTGRES_DSN}
       PULSE_PROC_PATH: /host/proc
       PULSE_SYS_PATH: /host/sys
+      # R10.1-PLAT security probe — platform posture dashboard. Base URL
+      # used for ingress-surface + TLS + agent-binary-signed checks.
+      PULSE_PLATFORM_URL: ${PULSE_PLATFORM_URL:-https://dev.opuslogic.eu}
+      PULSE_PLATFORM_HOST_ROOT: /host
       OIDC_ISSUER: ${OIDC_ISSUER}
       OIDC_JWKS_URI: ${OIDC_JWKS_URI}
       OIDC_PROJECT_ID: ${OIDC_PROJECT_ID}
@@ -26,6 +30,11 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
+      # R10.1-PLAT: read-only host mounts for the security probe.
+      # The probe inspects mode/owner/age — never reads .env contents.
+      - /opt/backups:/host/opt/backups:ro
+      - /opt/opuslogic:/host/opt/opuslogic:ro
+      - /etc/opuslogic:/host/etc/opuslogic:ro
     networks:
       - opuslogic-network
 
