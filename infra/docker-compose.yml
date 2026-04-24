@@ -14,7 +14,7 @@ services:
       PULSE_RETENTION_DAYS: "90"
       PULSE_BACKEND_URL: ${PULSE_BACKEND_URL:-https://opuslogic_backend:443}
       PULSE_ZITADEL_URL: ${PULSE_ZITADEL_URL:-http://opuslogic_zitadel:8080}
-      PULSE_TEMPORAL_URL: ${PULSE_TEMPORAL_URL:-opuslogic_temporal_server:7233}
+      PULSE_TEMPORAL_URL: ${PULSE_TEMPORAL_URL:-opuslogic_temporal:7233}
       PULSE_POSTGRES_DSN: ${PULSE_POSTGRES_DSN}
       PULSE_PROC_PATH: /host/proc
       PULSE_SYS_PATH: /host/sys
